@@ -22,6 +22,7 @@ class AuthController extends Controller
                 'phone'    => 'required|string|max:20|unique:users,phone',
                 // 'password' => 'required|string|confirmed|min:8',
                 'role'     => 'required|in:0,1,2,3', // admin, driver, shop, other
+                'address' => 'nullable|string|max:255',
                 'image'    => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             ], $this->messages());
 
@@ -29,6 +30,7 @@ class AuthController extends Controller
                 'name'     => $validated['name'],
                 'phone'    => $validated['phone'],
                 'role'     => $validated['role'],
+                'address'     => $validated['address'],
                 // 'password' => Hash::make($validated['password']),
             ];
 
@@ -49,7 +51,6 @@ class AuthController extends Controller
                 'message' => 'تم إرسال طلب فتح الحساب بنجاح في انتظار الموافقة',
                 'user'    => $user,
             ], 201);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => 'حدثت أخطاء في التحقق من البيانات',
@@ -89,7 +90,6 @@ class AuthController extends Controller
                 'role'    => $user->role,
                 'user'    => $user,
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => 'فشل في تسجيل الدخول',
@@ -128,7 +128,7 @@ class AuthController extends Controller
 
             'password.required' => 'كلمة المرور مطلوبة.',
             'password.string'   => 'يجب أن تكون كلمة المرور نصًا.',
-            'password.confirmed'=> 'تأكيد كلمة المرور غير مطابق.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير مطابق.',
             'password.min'      => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.',
 
             'role.required'     => 'يجب اختيار الصلاحية.',

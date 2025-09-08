@@ -38,9 +38,10 @@ class UserService
         try {
             $data = Arr::only($requestData, [
                 'name',
-                'email',
+                // 'email',
                 'phone',
                 'password',
+                'catogrey',
                 'address',
                 'role',
                 'is_approved',
@@ -98,10 +99,11 @@ class UserService
 
             $data = Arr::only($requestData, [
                 'name',
-                'email',
+                // 'email',
                 'phone',
                 'address',
                 'role',
+                'catogrey',
                 'is_approved',
                 'is_active',
                 'commission_percentage',

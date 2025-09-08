@@ -25,6 +25,7 @@ return new class extends Migration
                 ->default(2) // 2 = shop
                 ->comment('0: admin, 1: driver, 2: shop, 3: other');
 
+            $table->string('catogrey')->nullable(); 
             // كلمة المرور
             $table->string('password')->nullable();
 

@@ -28,13 +28,13 @@ class UserRequest extends FormRequest
 
         $commonRules = [
             'name' => 'required|string|max:100',
-            'email' => [
-                'nullable', // خليت الإيميل اختياري بناءً على الموديل
-                'string',
-                'email',
-                'max:150',
-                Rule::unique('users')->ignore($userId),
-            ],
+            // 'email' => [
+            //     'nullable', // خليت الإيميل اختياري بناءً على الموديل
+            //     'string',
+            //     'email',
+            //     'max:150',
+            //     Rule::unique('users')->ignore($userId),
+            // ],
             'phone' => [
                 'required',
                 'string',
@@ -42,6 +42,7 @@ class UserRequest extends FormRequest
                 Rule::unique('users')->ignore($userId),
             ],
             'address' => 'nullable|string|max:255',
+            'catogrey' => 'nullable|string|max:255',
             'user_add_id' => 'nullable|exists:users,id',
             'role' => [
                 'required',
@@ -83,10 +84,10 @@ class UserRequest extends FormRequest
         return [
             'name.required' => 'حقل الاسم مطلوب.',
             'name.max' => 'يجب ألا يتجاوز الاسم 100 حرف.',
-            'email.email' => 'يجب أن يكون البريد الإلكتروني صالحاً.',
-            'email.max' => 'يجب ألا يتجاوز البريد الإلكتروني 150 حرف.',
-            'email.unique' => 'البريد الإلكتروني مستخدم بالفعل.',
-            'phone.required' => 'رقم الهاتف مطلوب.',
+            // 'email.email' => 'يجب أن يكون البريد الإلكتروني صالحاً.',
+            // 'email.max' => 'يجب ألا يتجاوز البريد الإلكتروني 150 حرف.',
+            // 'email.unique' => 'البريد الإلكتروني مستخدم بالفعل.',
+            // 'phone.required' => 'رقم الهاتف مطلوب.',
             'phone.max' => 'يجب ألا يتجاوز رقم الهاتف 20 رقماً.',
             'phone.unique' => 'رقم الهاتف مستخدم بالفعل.',
             'password.required' => 'حقل كلمة المرور مطلوب.',
