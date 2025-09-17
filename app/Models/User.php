@@ -85,6 +85,14 @@ class User extends Authenticatable
     }
 
     /**
+     * علاقة مع الطلبات التي أضافها المستخدم
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'user_add_id');
+    }
+
+    /**
      * جلب اسم الدور كنص
      */
     public function getRoleNameAttribute()

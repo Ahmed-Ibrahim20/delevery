@@ -19,14 +19,18 @@ class OrderService
     /**
      * قائمة الطلبات مع إمكانية البحث والتصفية
      */
-    public function indexOrder($searchOrder = null, $perPageOrder = 10)
+    public function indexOrder($searchOrder = null, $perPageOrder = 10, $userId = null)
     {
         return $this->model
+            ->when($userId, function ($query) use ($userId) {
+                $query->where('user_add_id', $userId);
+            })
             ->when($searchOrder, function ($query) use ($searchOrder) {
                 $query->where('customer_name', 'like', "%{$searchOrder}%")
                     ->orWhere('customer_phone', 'like', "%{$searchOrder}%")
                     ->orWhere('customer_address', 'like', "%{$searchOrder}%");
             })
+            ->with('addedBy:id,name,phone,role','delivery:id,name,phone,role')
             ->orderBy('id', 'desc')
             ->paginate($perPageOrder);
     }
@@ -142,6 +146,44 @@ class OrderService
             return [
                 'status' => false,
                 'message' => 'حدث خطأ أثناء حذف الطلب'
+            ];
+        }
+    }
+
+    /**
+     * تغيير حالة الطلب
+     */
+    public function changeOrderStatus($orderId, $status)
+    {
+        try {
+            $order = $this->model->find($orderId);
+
+            if (!$order) {
+                return [
+                    'status' => false,
+                    'message' => 'الطلب غير موجود'
+                ];
+            }
+
+            $order->update(['status' => $status]);
+
+            $statusText = match ($status) {
+                0 => 'قيد الانتظار',
+                1 => 'مكتمل',
+                2 => 'ملغي',
+                default => 'غير معروف'
+            };
+
+            return [
+                'status' => true,
+                'message' => "تم تغيير حالة الطلب إلى: {$statusText}",
+                'data' => $order
+            ];
+        } catch (\Exception $e) {
+            Log::error('Order status change failed: ' . $e->getMessage());
+            return [
+                'status' => false,
+                'message' => 'حدث خطأ أثناء تغيير حالة الطلب'
             ];
         }
     }

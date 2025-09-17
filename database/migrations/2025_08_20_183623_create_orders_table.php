@@ -22,10 +22,14 @@ return new class extends Migration {
 
             $table->unsignedBigInteger('user_add_id')->nullable();
 
+             // نسبة التطبيق ومبلغها
+            $table->decimal('application_percentage', 5, 2)->default(0)->comment('النسبة المئوية للتطبيق');
+            $table->decimal('application_fee', 10, 2)->default(0)->comment('المبلغ الناتج عن النسبة');
+
             // حالة الطلب
             $table->unsignedTinyInteger('status')
                 ->default(0) // 0 = pending
-                ->comment('0: pending, 1: delivered, 2: cancelled');
+                ->comment('0: pending, 1: delivered, 2: cancelled, 3:complete');
             $table->unsignedBigInteger('delivery_id')->nullable();
 
             // ملاحظات اختيارية

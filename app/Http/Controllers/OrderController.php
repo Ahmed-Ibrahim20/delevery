@@ -23,12 +23,13 @@ class OrderController extends Controller
     {
         $searchOrder = $request->query('search');
         $perPageOrder = $request->query('perPage', 10);
+        $userId = $request->query('user_id');
 
-        $orders = $this->orderService->indexOrder($searchOrder, $perPageOrder);
+        $orders = $this->orderService->indexOrder($searchOrder, $perPageOrder, $userId);
 
         return response()->json([
             'status' => true,
-            'message' => 'قائمة الطلبات',
+            'message' => $userId ? 'قائمة طلبات المستخدم' : 'قائمة الطلبات',
             'data' => $orders
         ]);
     }
@@ -80,6 +81,20 @@ class OrderController extends Controller
     public function destroy($id)
     {
         $result = $this->orderService->destroyOrder($id);
+
+        return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * تغيير حالة الطلب
+     */
+    public function changeStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|integer|in:0,1,2'
+        ]);
+
+        $result = $this->orderService->changeOrderStatus($id, $request->status);
 
         return response()->json($result, $result['status'] ? 200 : 404);
     }

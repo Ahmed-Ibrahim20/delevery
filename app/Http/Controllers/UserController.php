@@ -83,4 +83,65 @@ class UserController extends Controller
 
         return response()->json($result, $result['status'] ? 200 : 404);
     }
+
+    /**
+     * تغيير حالة الموافقة للمستخدم
+     */
+    public function approve(Request $request, $id)
+    {
+        $request->validate([
+            'is_approved' => 'required|boolean'
+        ]);
+
+        $result = $this->userService->approveUser($id, $request->is_approved);
+
+        return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * تغيير كلمة المرور
+     */
+    public function changePassword(Request $request, $id)
+    {
+        $request->validate([
+            'new_password' => 'required|string|min:6',
+            'confirm_password' => 'required|string|min:6'
+        ]);
+
+        $result = $this->userService->changePassword(
+            $id,
+            $request->new_password,
+            $request->confirm_password
+        );
+
+        return response()->json($result, $result['status'] ? 200 : 400);
+    }
+
+    /**
+     * تغيير حالة النشاط للمستخدم
+     */
+    public function changeActiveStatus(Request $request, $id)
+    {
+        $request->validate([
+            'is_active' => 'required|boolean'
+        ]);
+
+        $result = $this->userService->changeActiveStatus($id, $request->is_active);
+
+        return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * تغيير نسبة العمولة للمستخدم
+     */
+    public function changeCommissionPercentage(Request $request, $id)
+    {
+        $request->validate([
+            'commission_percentage' => 'required|numeric|min:0|max:100'
+        ]);
+
+        $result = $this->userService->changeCommissionPercentage($id, $request->commission_percentage);
+
+        return response()->json($result, $result['status'] ? 200 : 404);
+    }
 }

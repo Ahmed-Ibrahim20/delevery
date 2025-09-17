@@ -21,8 +21,9 @@ class AuthController extends Controller
                 'name'     => 'required|string|max:100',
                 'phone'    => 'required|string|max:20|unique:users,phone',
                 // 'password' => 'required|string|confirmed|min:8',
-                'role'     => 'required|in:0,1,2,3', // admin, driver, shop, other
+                'role'     => 'required|in:1,2,3', // driver, shop, other
                 'address' => 'nullable|string|max:255',
+                'catogrey' => 'nullable|string|max:255',
                 'image'    => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             ], $this->messages());
 
@@ -30,7 +31,8 @@ class AuthController extends Controller
                 'name'     => $validated['name'],
                 'phone'    => $validated['phone'],
                 'role'     => $validated['role'],
-                'address'     => $validated['address'],
+                'address'     => $validated['address'] ?? null,
+                'catogrey'     => $validated['catogrey'] ?? null,
                 // 'password' => Hash::make($validated['password']),
             ];
 
@@ -98,6 +100,76 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'حدث خطأ أثناء تسجيل الدخول',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * تسجيل الخروج
+     */
+    public function logout(Request $request)
+    {
+        try {
+            $request->user()->currentAccessToken()->delete();
+
+            return response()->json([
+                'message' => 'تم تسجيل الخروج بنجاح'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'حدث خطأ أثناء تسجيل الخروج',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * تغيير كلمة المرور
+     */
+    public function resetPassword(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'old_password'          => 'required|string',
+                'new_password'          => 'required|string|min:8|confirmed',
+                // لازم تبعت new_password و new_password_confirmation
+            ], [
+                'old_password.required'  => 'كلمة المرور القديمة مطلوبة',
+                'new_password.required'  => 'كلمة المرور الجديدة مطلوبة',
+                'new_password.min'       => 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل',
+                'new_password.confirmed' => 'تأكيد كلمة المرور غير مطابق',
+            ]);
+
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            // التحقق من كلمة المرور القديمة
+            if (!Hash::check($validated['old_password'], $user->password)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'كلمة المرور القديمة غير صحيحة'
+                ], 400);
+            }
+
+            // تحديث كلمة المرور
+            $user->password = Hash::make($validated['new_password']);
+            $user->save();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'تم تغيير كلمة المرور بنجاح'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'حدثت أخطاء في التحقق من البيانات',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'حدث خطأ أثناء تغيير كلمة المرور',
                 'error'   => $e->getMessage()
             ], 500);
         }
