@@ -30,7 +30,7 @@ class OrderService
                     ->orWhere('customer_phone', 'like', "%{$searchOrder}%")
                     ->orWhere('customer_address', 'like', "%{$searchOrder}%");
             })
-            ->with('addedBy:id,name,phone,role','delivery:id,name,phone,role')
+            ->with('addedBy:id,name,phone,role', 'delivery:id,name,phone,role')
             ->orderBy('id', 'desc')
             ->paginate($perPageOrder);
     }
@@ -165,7 +165,11 @@ class OrderService
                 ];
             }
 
-            $order->update(['status' => $status]);
+            // تحديث الحالة وربطها بالدليفري (المستخدم الحالي)
+            $order->update([
+                'status' => $status,
+                'delivery_id' => Auth::id(),
+            ]);
 
             $statusText = match ($status) {
                 0 => 'قيد الانتظار',
@@ -177,10 +181,11 @@ class OrderService
             return [
                 'status' => true,
                 'message' => "تم تغيير حالة الطلب إلى: {$statusText}",
-                'data' => $order
+                'data' => $order->load('addedBy') // تحميل بيانات اللي أضاف الأوردر برضه
             ];
         } catch (\Exception $e) {
             Log::error('Order status change failed: ' . $e->getMessage());
+
             return [
                 'status' => false,
                 'message' => 'حدث خطأ أثناء تغيير حالة الطلب'
