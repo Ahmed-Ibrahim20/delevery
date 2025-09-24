@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Events\UserRegistered;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -49,6 +50,9 @@ class AuthController extends Controller
 
             $user = User::create($data);
 
+            // إطلاق Event لإشعار الأدمن بطلب فتح حساب جديد
+            event(new UserRegistered($user));
+
             return response()->json([
                 'message' => 'تم إرسال طلب فتح الحساب بنجاح في انتظار الموافقة',
                 'user'    => $user,
@@ -77,13 +81,25 @@ class AuthController extends Controller
                 'password' => 'required|string',
             ], $this->messages());
 
+            // محاولة تسجيل الدخول
             if (!Auth::attempt(['phone' => $validated['phone'], 'password' => $validated['password']])) {
                 throw ValidationException::withMessages([
                     'phone' => ['بيانات تسجيل الدخول غير صحيحة.'],
                 ]);
             }
 
-            $user  = User::where('phone', $validated['phone'])->first();
+            $user = User::where('phone', $validated['phone'])->first();
+
+            // ✅ الشرط المهم: لازم يكون نشط
+            if (!$user->is_active) {
+                // لو مش نشط نرجعه برسالة خطأ ونمنع الدخول
+                Auth::logout();
+                return response()->json([
+                    'message' => 'الحساب غير نشط، لا يمكنك تسجيل الدخول.',
+                ], 403);
+            }
+
+            // لو نشط يعمل توكن
             $token = $user->createToken('API Token')->plainTextToken;
 
             return response()->json([
@@ -104,7 +120,6 @@ class AuthController extends Controller
             ], 500);
         }
     }
-
     /**
      * تسجيل الخروج
      */

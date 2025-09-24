@@ -35,6 +35,7 @@ class User extends Authenticatable
         'address',
         'is_approved',
         'is_active',
+        'is_available',
         'commission_percentage',
         'user_add_id',
         'avatar',
@@ -56,6 +57,7 @@ class User extends Authenticatable
     protected $casts = [
         'is_approved'           => 'boolean',
         'is_active'             => 'boolean',
+        'is_available'             => 'boolean',
         'commission_percentage' => 'decimal:2',
         'role'                  => 'integer',
     ];

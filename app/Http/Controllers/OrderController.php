@@ -91,11 +91,28 @@ class OrderController extends Controller
     public function changeStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|integer|in:0,1,2'
+            'status' => 'required|integer|in:0,1,2,3'
         ]);
 
         $result = $this->orderService->changeOrderStatus($id, $request->status);
 
         return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * جلب الطلبات الجارية (status = 1)
+     */
+    public function getActiveOrders(Request $request)
+    {
+        $searchOrder = $request->query('search');
+        $perPageOrder = $request->query('perPage', 10);
+
+        $result = $this->orderService->getActiveOrders($searchOrder, $perPageOrder);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'قائمة الطلبات الجارية',
+            'data' => $result
+        ]);
     }
 }

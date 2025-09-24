@@ -6,6 +6,7 @@ use App\Models\Complaint;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ComplaintService
 {
@@ -40,20 +41,22 @@ class ComplaintService
     public function storeComplaint(array $requestData)
     {
         try {
-            $data = Arr::only($requestData, [
-                'complaint_text',
-            ]);
+            return DB::transaction(function () use ($requestData) {
+                $data = Arr::only($requestData, [
+                    'complaint_text',
+                ]);
 
-            // إضافة معرف المستخدم من Auth
-            $data['user_id'] = Auth::id();
+                // إضافة معرف المستخدم من Auth
+                $data['user_id'] = Auth::id();
 
-            $complaint = $this->model->create($data);
+                $complaint = $this->model->create($data);
 
-            return [
-                'status' => true,
-                'message' => 'تم إنشاء الشكوى بنجاح',
-                'data' => $complaint->load('user:id,name,phone')
-            ];
+                return [
+                    'status' => true,
+                    'message' => 'تم إنشاء الشكوى بنجاح',
+                    'data' => $complaint->load('user:id,name,phone')
+                ];
+            });
         } catch (\Exception $e) {
             Log::error('Complaint creation failed: ' . $e->getMessage());
             return [

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ComplaintRequest;
 use App\Http\Services\ComplaintService;
+use App\Events\ComplaintCreated;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ComplaintController extends Controller
 {
@@ -40,6 +42,11 @@ class ComplaintController extends Controller
     public function store(ComplaintRequest $request)
     {
         $result = $this->complaintService->storeComplaint($request->validated());
+
+        // إذا تم إنشاء الشكوى بنجاح، أرسل إشعار للأدمن
+        if ($result['status'] && isset($result['data'])) {
+            event(new ComplaintCreated($result['data']));
+        }
 
         return response()->json($result, $result['status'] ? 201 : 500);
     }

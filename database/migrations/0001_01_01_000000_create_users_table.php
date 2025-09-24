@@ -25,7 +25,7 @@ return new class extends Migration
                 ->default(2) // 2 = shop
                 ->comment('0: admin, 1: driver, 2: shop, 3: other');
 
-            $table->string('catogrey')->nullable(); 
+            $table->string('catogrey')->nullable();
             // كلمة المرور
             $table->string('password')->nullable();
 
@@ -37,6 +37,9 @@ return new class extends Migration
 
             // حالة النشاط
             $table->boolean('is_active')->default(true);
+
+            //لي الدليفري 
+            $table->boolean('is_available')->default(true);
 
             // النسبة (للمحصل أو المحل)
             $table->decimal('commission_percentage', 5, 2)->nullable();

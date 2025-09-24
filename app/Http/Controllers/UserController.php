@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
 use App\Http\Services\UserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -143,5 +144,44 @@ class UserController extends Controller
         $result = $this->userService->changeCommissionPercentage($id, $request->commission_percentage);
 
         return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * تغيير حالة التوفر للسائق (is_available)
+     */
+    public function changeAvailabilityStatus(Request $request, $id)
+    {
+        $request->validate([
+            'is_available' => 'required|boolean'
+        ]);
+
+        $result = $this->userService->changeAvailabilityStatus($id, $request->is_available);
+
+        return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * تغيير حالة التوفر للسائق الحالي (للسائق نفسه)
+     */
+    public function toggleMyAvailability(Request $request)
+    {
+        $request->validate([
+            'is_available' => 'required|boolean'
+        ]);
+
+        $userId = Auth::user()->id;
+        $result = $this->userService->changeAvailabilityStatus($userId, $request->is_available);
+
+        return response()->json($result, $result['status'] ? 200 : 404);
+    }
+
+    /**
+     * جلب السائقين المتاحين
+     */
+    public function getAvailableDrivers()
+    {
+        $result = $this->userService->getAvailableDrivers();
+
+        return response()->json($result, $result['status'] ? 200 : 500);
     }
 }

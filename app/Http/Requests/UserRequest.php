@@ -56,6 +56,7 @@ class UserRequest extends FormRequest
             ],
             'is_approved' => 'nullable|boolean',
             'is_active'   => 'nullable|boolean',
+            'is_available'   => 'nullable|boolean',
             'commission_percentage' => 'nullable|numeric|min:0|max:100',
             'avatar' => 'nullable|image|max:2048', // صورة اختيارية
             'notes' => 'nullable|string|max:1000',

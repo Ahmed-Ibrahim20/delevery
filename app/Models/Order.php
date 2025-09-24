@@ -23,13 +23,20 @@ class Order extends Model
         'delivery_id',
         'status',
         'notes',
+        'application_percentage',
+        'application_fee',
     ];
-
+    protected $casts = [
+        'application_fee' => 'decimal:2',
+        'application_percentage' => 'decimal:2',
+        // ... أي casts موجودة حالياً
+    ];
     // mapping للحالات بالأرقام
     const STATUS = [
         0 => 'pending',
         1 => 'delivered',
         2 => 'cancelled',
+        3 => 'complete',
     ];
 
     // دالة مساعدة ترجع النص بدل الرقم
@@ -44,8 +51,7 @@ class Order extends Model
         return $this->belongsTo(User::class, 'user_add_id');
     }
     public function delivery()
-{
-    return $this->belongsTo(User::class, 'delivery_id');
-}
-
+    {
+        return $this->belongsTo(User::class, 'delivery_id');
+    }
 }

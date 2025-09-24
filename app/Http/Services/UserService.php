@@ -337,4 +337,80 @@ class UserService
             ];
         }
     }
+
+    /**
+     * تغيير حالة التوفر للسائق
+     */
+    public function changeAvailabilityStatus($userId, $isAvailable)
+    {
+        try {
+            $user = $this->model->find($userId);
+
+            if (!$user) {
+                return [
+                    'status' => false,
+                    'message' => 'المستخدم غير موجود'
+                ];
+            }
+
+            // التحقق من أن المستخدم سائق
+            if ($user->role !== User::ROLE_DRIVER) {
+                return [
+                    'status' => false,
+                    'message' => 'هذه الخاصية متاحة للسائقين فقط'
+                ];
+            }
+
+            $user->update(['is_available' => $isAvailable]);
+
+            $statusText = $isAvailable ? 'متاح' : 'غير متاح';
+
+            return [
+                'status' => true,
+                'message' => "تم تحديث حالة التوفر إلى: {$statusText}",
+                'data' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'is_available' => $user->is_available,
+                    'status_text' => $statusText
+                ]
+            ];
+        } catch (\Exception $e) {
+            Log::error('Availability status change failed: ' . $e->getMessage());
+            return [
+                'status' => false,
+                'message' => 'حدث خطأ أثناء تحديث حالة التوفر'
+            ];
+        }
+    }
+
+    /**
+     * جلب السائقين المتاحين
+     */
+    public function getAvailableDrivers()
+    {
+        try {
+            $availableDrivers = $this->model->where('role', User::ROLE_DRIVER)
+                ->where('is_available', true)
+                ->where('is_active', true)
+                ->where('is_approved', true)
+                ->select('id', 'name', 'phone', 'address', 'commission_percentage', 'is_available')
+                ->get();
+
+            return [
+                'status' => true,
+                'message' => 'قائمة السائقين المتاحين',
+                'data' => [
+                    'drivers' => $availableDrivers,
+                    'count' => $availableDrivers->count()
+                ]
+            ];
+        } catch (\Exception $e) {
+            Log::error('Get available drivers failed: ' . $e->getMessage());
+            return [
+                'status' => false,
+                'message' => 'حدث خطأ أثناء جلب السائقين المتاحين'
+            ];
+        }
+    }
 }

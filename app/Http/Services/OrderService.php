@@ -3,6 +3,9 @@
 namespace App\Http\Services;
 
 use App\Models\Order;
+use App\Events\OrderCreated;
+use App\Events\OrderAccepted;
+use App\Events\OrderDelivered;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -52,9 +55,27 @@ class OrderService
                 'notes'
             ]);
 
+            // من أضاف الطلب (المستخدم الحالي)
             $data['user_add_id'] = Auth::id();
 
+            // جلب المستخدم الحالي ونسبة العمولة المخزنة في users.commission_percentage
+            $user = Auth::user();
+            $commissionPercentage = $user->commission_percentage ?? 0; // نسبة مئوية مثل 10 أو 5.5
+
+            // قيمة التوصيل المستخدمة للحساب (تحويل إلى float للتأكد)
+            $deliveryFee = isset($data['delivery_fee']) ? (float) $data['delivery_fee'] : 0.0;
+
+            // حساب المبلغ المستحق للتطبيق بناءً على النسبة
+            $applicationFee = round($deliveryFee * ($commissionPercentage / 100), 2);
+
+            // حفظ النسبة والمبلغ في بيانات الأوردر قبل الإنشاء
+            $data['application_percentage'] = $commissionPercentage;
+            $data['application_fee'] = $applicationFee;
+
             $order = $this->model->create($data);
+
+            // إطلاق Event لإشعار السائقين بطلب جديد
+            event(new OrderCreated($order));
 
             return [
                 'status' => true,
@@ -101,10 +122,38 @@ class OrderService
                 'total',
                 'delivery_id',
                 'status',
-                'notes'
+                'notes',
+                'user_add_id' // لو مسموح تغيير صاحب الأوردر
             ]);
 
+            // نحدد أي مستخدم نأخذ منه نسبة العمولة:
+            // إذا تم تمرير user_add_id في التحديث نستخدمه، وإلا نستخدم صاحب الأوردر الحالي
+            $commissionUserId = $data['user_add_id'] ?? $order->user_add_id ?? null;
+            $commissionPercentage = 0;
+
+            if ($commissionUserId) {
+                $commissionUser = \App\Models\User::find($commissionUserId);
+                $commissionPercentage = $commissionUser->commission_percentage ?? 0;
+            }
+
+            // نحدد delivery_fee الفعلية (من البيانات الجديدة أو من الأوردر الحالي)
+            $deliveryFee = isset($data['delivery_fee']) ? (float) $data['delivery_fee'] : ((float) $order->delivery_fee ?? 0.0);
+            $applicationFee = round($deliveryFee * ($commissionPercentage / 100), 2);
+
+            // نحفظ النسبة والمبلغ في المصفوفة ليتم حفظها في الأوردر
+            $data['application_percentage'] = $commissionPercentage;
+            $data['application_fee'] = $applicationFee;
+
+            // حفظ الحالة القديمة للمقارنة
+            $oldStatus = $order->status;
+
             $order->update($data);
+
+            // لو حابب ترجّع البيانات المحدثة من قاعدة البيانات بدل الكائن القديم:
+            $order->refresh();
+
+            // إطلاق Events حسب تغيير الحالة
+            $this->handleStatusChangeEvents($order, $oldStatus);
 
             return [
                 'status' => true,
@@ -165,16 +214,22 @@ class OrderService
                 ];
             }
 
+            // حفظ الحالة القديمة للمقارنة
+            $oldStatus = $order->status;
+
             // تحديث الحالة وربطها بالدليفري (المستخدم الحالي)
             $order->update([
                 'status' => $status,
                 'delivery_id' => Auth::id(),
             ]);
 
+            // إطلاق Events حسب تغيير الحالة
+            $this->handleStatusChangeEvents($order, $oldStatus);
+
             $statusText = match ($status) {
                 0 => 'قيد الانتظار',
-                1 => 'مكتمل',
-                2 => 'ملغي',
+                1 => 'تم القبول',
+                3 => 'تم توصيله بنجاح',
                 default => 'غير معروف'
             };
 
@@ -190,6 +245,62 @@ class OrderService
                 'status' => false,
                 'message' => 'حدث خطأ أثناء تغيير حالة الطلب'
             ];
+        }
+    }
+
+    /**
+     * معالجة Events حسب تغيير حالة الطلب
+     */
+    private function handleStatusChangeEvents($order, $oldStatus)
+    {
+        try {
+            // تحديث البيانات مع العلاقات
+            $order->load(['addedBy', 'delivery']);
+
+            // إذا تم قبول الطلب (من pending إلى أي حالة أخرى وتم تعيين سائق)
+            if ($oldStatus == 1 && $order->status != 10 && $order->delivery_id) {
+                event(new OrderAccepted($order));
+                Log::info('OrderAccepted event fired', ['order_id' => $order->id]);
+            }
+
+            // إذا تم تسليم الطلب (status = 1)
+            if ($order->status == 3 && $oldStatus != 3) {
+                event(new OrderDelivered($order));
+                Log::info('OrderDelivered event fired', ['order_id' => $order->id]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to handle status change events: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'old_status' => $oldStatus,
+                'new_status' => $order->status
+            ]);
+        }
+    }
+
+    /**
+     * جلب الطلبات الجارية (status = 1)
+     */
+    public function getActiveOrders($searchOrder = null, $perPageOrder = 10)
+    {
+        try {
+            $orders = $this->model
+                ->where('status', 1) // الطلبات الجارية فقط
+                ->when($searchOrder, function ($query) use ($searchOrder) {
+                    $query->where('customer_name', 'like', "%{$searchOrder}%")
+                        ->orWhere('customer_phone', 'like', "%{$searchOrder}%")
+                        ->orWhere('customer_address', 'like', "%{$searchOrder}%");
+                })
+                ->with([
+                    'addedBy:id,name,phone,role',
+                    'delivery:id,name,phone,role,is_available'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPageOrder);
+
+            return $orders;
+        } catch (\Exception $e) {
+            Log::error('Get active orders failed: ' . $e->getMessage());
+            return collect(); // إرجاع collection فارغة في حالة الخطأ
         }
     }
 }
