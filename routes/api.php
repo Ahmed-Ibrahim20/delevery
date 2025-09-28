@@ -38,16 +38,19 @@ Route::prefix('v1')->group(function () {
                         | PUT/PATCH   | `/api/v1/users/{id}` | Update  | `update()`        |
                         | DELETE      | `/api/v1/users/{id}` | Destroy | `destroy()`       | */
 
+                // Additional User Management Routes (قبل apiResource عشان ما يتصادمش)
+                Route::put('users/toggle-my-availability', [UserController::class, 'toggleMyAvailability']);
+                Route::get('users/my-availability', [UserController::class, 'myAvailability']);
+                Route::get('users/available-drivers', [UserController::class, 'getAvailableDrivers']);
+                
                 Route::apiResource('users', UserController::class);
 
-                // Additional User Management Routes
+                // Additional User Management Routes with {id}
                 Route::put('users/{id}/approve', [UserController::class, 'approve']);
                 Route::put('users/{id}/change-password', [UserController::class, 'changePassword']);
                 Route::put('users/{id}/change-active-status', [UserController::class, 'changeActiveStatus']);
                 Route::put('users/{id}/change-commission', [UserController::class, 'changeCommissionPercentage']);
                 Route::put('users/{id}/change-availability-status', [UserController::class, 'changeAvailabilityStatus']);
-                Route::put('users/toggle-my-availability', [UserController::class, 'toggleMyAvailability']);
-                Route::get('users/available-drivers', [UserController::class, 'getAvailableDrivers']);
 
                 // Notifications Management Routes
                 /*  | HTTP Method | Endpoint                                    | Action                    | Controller Method       |

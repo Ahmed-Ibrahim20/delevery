@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
+use App\Http\Requests\AvailabilityRequest;
 use App\Http\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -165,12 +167,30 @@ class UserController extends Controller
      */
     public function toggleMyAvailability(Request $request)
     {
-        $request->validate([
-            'is_available' => 'required|boolean'
-        ]);
+        // تسجيل تغيير حالة التوفر للسائق
+
+        // التحقق من وجود البيانات المطلوبة فقط
+        if (!$request->has('is_available')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'حقل is_available مطلوب',
+                'received_data' => $request->all()
+            ], 422);
+        }
+
+        if (!is_bool($request->is_available) && !in_array($request->is_available, [0, 1, '0', '1', 'true', 'false'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'حقل is_available يجب أن يكون true أو false',
+                'received_value' => $request->is_available
+            ], 422);
+        }
+
+        // تحويل القيمة لـ boolean
+        $isAvailable = filter_var($request->is_available, FILTER_VALIDATE_BOOLEAN);
 
         $userId = Auth::user()->id;
-        $result = $this->userService->changeAvailabilityStatus($userId, $request->is_available);
+        $result = $this->userService->changeAvailabilityStatus($userId, $isAvailable);
 
         return response()->json($result, $result['status'] ? 200 : 404);
     }
@@ -183,5 +203,32 @@ class UserController extends Controller
         $result = $this->userService->getAvailableDrivers();
 
         return response()->json($result, $result['status'] ? 200 : 500);
+    }
+
+    /**
+     * الحصول على حالة التوفر للمستخدم الحالي (السائق)
+     */
+    public function myAvailability()
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'غير مصرح',
+            ], 401);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'حالة التوفر الحالية',
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+                'is_available' => (bool) $user->is_available,
+                'status_text' => $user->is_available ? 'متاح' : 'غير متاح',
+            ]
+        ]);
     }
 }

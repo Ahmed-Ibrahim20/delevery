@@ -3,6 +3,7 @@
 namespace App\Http\Services;
 
 use App\Models\Order;
+use App\Models\User;
 use App\Events\OrderCreated;
 use App\Events\OrderAccepted;
 use App\Events\OrderDelivered;
@@ -214,14 +215,36 @@ class OrderService
                 ];
             }
 
+            // تحقق من صلاحية وإتاحة السائق عند محاولة قبول الطلب (status = 1)
+            if ((int)$status === 1) {
+                $driver = Auth::user();
+
+                if (!$driver || $driver->role !== User::ROLE_DRIVER) {
+                    return [
+                        'status' => false,
+                        'message' => 'هذه العملية مسموحة للسائقين فقط'
+                    ];
+                }
+
+                if (!$driver->is_available) {
+                    return [
+                        'status' => false,
+                        'message' => 'لا يمكنك قبول الطلب حالياً لأن حالتك: مشغول'
+                    ];
+                }
+            }
+
             // حفظ الحالة القديمة للمقارنة
             $oldStatus = $order->status;
 
-            // تحديث الحالة وربطها بالدليفري (المستخدم الحالي)
-            $order->update([
-                'status' => $status,
-                'delivery_id' => Auth::id(),
-            ]);
+            // تحديث الحالة وربطها بالدليفري (المستخدم الحالي عند القبول)
+            $updateData = ['status' => $status];
+            if ((int)$status === 1) {
+                $updateData['delivery_id'] = Auth::id();
+            }
+            $order->update($updateData);
+
+            // السائق يتحكم في حالته بنفسه - مفيش تحكم أوتوماتيكي
 
             // إطلاق Events حسب تغيير الحالة
             $this->handleStatusChangeEvents($order, $oldStatus);

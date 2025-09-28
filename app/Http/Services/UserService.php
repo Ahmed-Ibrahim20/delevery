@@ -361,6 +361,8 @@ class UserService
                 ];
             }
 
+            // السائق يتحكم في حالته بنفسه - مفيش قيود
+
             $user->update(['is_available' => $isAvailable]);
 
             $statusText = $isAvailable ? 'متاح' : 'غير متاح';
