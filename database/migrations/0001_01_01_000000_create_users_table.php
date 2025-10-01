@@ -17,6 +17,7 @@ return new class extends Migration
             // بيانات أساسية
             $table->string('name', 100);
             $table->string('phone', 20)->unique();
+            $table->string('store_name')->nullable();
             $table->string('email', 150)->unique()->nullable();
             $table->string('image')->nullable(); // مسار أو اسم الصورة
 

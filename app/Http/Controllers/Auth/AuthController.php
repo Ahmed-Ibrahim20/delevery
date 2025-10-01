@@ -25,6 +25,7 @@ class AuthController extends Controller
                 'role'     => 'required|in:1,2,3', // driver, shop, other
                 'address' => 'nullable|string|max:255',
                 'catogrey' => 'nullable|string|max:255',
+                'store_name' => 'nullable|string|max:255',
                 'image'    => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             ], $this->messages());
 
@@ -34,6 +35,7 @@ class AuthController extends Controller
                 'role'     => $validated['role'],
                 'address'     => $validated['address'] ?? null,
                 'catogrey'     => $validated['catogrey'] ?? null,
+                'store_name'     => $validated['catogrey'] ?? null,
                 // 'password' => Hash::make($validated['password']),
             ];
 

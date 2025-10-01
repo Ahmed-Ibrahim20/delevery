@@ -60,6 +60,7 @@ class UserRequest extends FormRequest
             'commission_percentage' => 'nullable|numeric|min:0|max:100',
             'avatar' => 'nullable|image|max:2048', // صورة اختيارية
             'notes' => 'nullable|string|max:1000',
+            'store_name' => 'nullable|string|max:100',
         ];
 
         if ($this->isMethod('POST')) {
