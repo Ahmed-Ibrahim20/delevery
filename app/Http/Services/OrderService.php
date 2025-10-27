@@ -34,7 +34,7 @@ class OrderService
                     ->orWhere('customer_phone', 'like', "%{$searchOrder}%")
                     ->orWhere('customer_address', 'like', "%{$searchOrder}%");
             })
-            ->with('addedBy:id,name,phone,role', 'delivery:id,name,phone,role')
+            ->with('addedBy:id,name,phone,role,address,store_name', 'delivery:id,name,phone,role')
             ->orderBy('id', 'desc')
             ->paginate($perPageOrder);
     }

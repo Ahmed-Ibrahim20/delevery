@@ -36,28 +36,28 @@ class ReportService
 
             // جلب كل الأوردرات مع العلاقات
             $orders = $query->with(['addedBy:id,name,phone,role,commission_percentage', 'delivery:id,name,phone,role,commission_percentage'])
-                           ->orderBy('created_at', 'desc')
-                           ->get();
+                ->orderBy('created_at', 'desc')
+                ->get();
 
             // حساب الإحصائيات الأساسية
             $completedOrdersCount = $orders->count();
             $totalDeliveryFees = $orders->sum('delivery_fee');
             $totalOrdersValue = $orders->sum('total');
-            
+
             // حساب عمولة التطبيق من المتاجر والسائقين
             $shopCommissionTotal = 0;
             $driverCommissionTotal = 0;
-            
+
             // إحصائيات الأداء
             $shopPerformance = [];
             $driverPerformance = [];
-            
+
             foreach ($orders as $order) {
                 // حساب عمولة التطبيق من المحل (على إجمالي الأوردر)
                 if ($order->addedBy && $order->addedBy->role == User::ROLE_SHOP) {
                     $shopCommission = ($order->total * ($order->addedBy->commission_percentage ?? 0)) / 100;
                     $shopCommissionTotal += $shopCommission;
-                    
+
                     // إحصائيات أداء المتاجر
                     $shopId = $order->addedBy->id;
                     if (!isset($shopPerformance[$shopId])) {
@@ -75,12 +75,12 @@ class ReportService
                     $shopPerformance[$shopId]['total_orders_value'] += $order->total;
                     $shopPerformance[$shopId]['commission_paid_to_platform'] += $shopCommission;
                 }
-                
+
                 // حساب عمولة التطبيق من السائق (على رسوم التوصيل)
                 if ($order->delivery && $order->delivery->role == User::ROLE_DRIVER) {
                     $driverCommission = ($order->delivery_fee * ($order->delivery->commission_percentage ?? 0)) / 100;
                     $driverCommissionTotal += $driverCommission;
-                    
+
                     // إحصائيات أداء السائقين
                     $driverId = $order->delivery->id;
                     if (!isset($driverPerformance[$driverId])) {
@@ -99,17 +99,21 @@ class ReportService
                     $driverPerformance[$driverId]['commission_paid_to_platform'] += $driverCommission;
                 }
             }
-            
+
             // إجمالي إيرادات المنصة
             $totalPlatformRevenue = $shopCommissionTotal + $driverCommissionTotal;
-            
+
             // ترتيب الأداء (أكثر نشاطاً حسب عدد الأوردرات)
             $topShops = collect($shopPerformance)->sortByDesc('orders_count')->take(10)->values();
             $topDrivers = collect($driverPerformance)->sortByDesc('orders_count')->take(10)->values();
-            
-            // إحصائيات عامة
-            $totalShopsCount = $this->userModel->where('role', User::ROLE_SHOP)->count();
-            $totalDriversCount = $this->userModel->where('role', User::ROLE_DRIVER)->count();
+
+            // إحصائيات عامة - فقط المعتمدين
+            $totalShopsCount = $this->userModel->where('role', User::ROLE_SHOP)
+                ->where('is_approved', true)
+                ->count();
+            $totalDriversCount = $this->userModel->where('role', User::ROLE_DRIVER)
+                ->where('is_approved', true)
+                ->count();
 
             return [
                 'status' => true,
@@ -180,11 +184,11 @@ class ReportService
             // حساب الإحصائيات
             $completedOrders = $query->count();
             $totalDeliveryFees = $query->sum('delivery_fee');
-            
+
             // حساب عمولة التطبيق من السائق
             $applicationPercentage = $delivery->commission_percentage ?? 0;
             $applicationCommission = ($totalDeliveryFees * $applicationPercentage) / 100;
-            
+
             // صافي الأرباح للسائق
             $netProfit = $totalDeliveryFees - $applicationCommission;
 
@@ -252,11 +256,11 @@ class ReportService
             $completedOrders = $orders->count();
             $totalOrdersValue = $orders->sum('total');
             $totalDeliveryFees = $orders->sum('delivery_fee');
-            
+
             // حساب عمولة التطبيق من المحل
             $applicationPercentage = $shop->commission_percentage ?? 0;
             $applicationCommission = ($totalOrdersValue * $applicationPercentage) / 100;
-            
+
             // صافي الربح للمحل
             $netProfit = $totalOrdersValue - $applicationCommission;
 
@@ -300,9 +304,10 @@ class ReportService
             // تقرير الأدمن العام
             $adminReport = $this->getAdminReport($startDate, $endDate);
 
-            // تقارير كل الدليفريز
+            // تقارير كل الدليفريز - فقط المعتمدين
             $deliveries = $this->userModel->where('role', User::ROLE_DRIVER)
                 ->where('is_active', true)
+                ->where('is_approved', true)
                 ->get();
 
             $deliveryReports = [];
@@ -313,9 +318,10 @@ class ReportService
                 }
             }
 
-            // تقارير كل المحلات
+            // تقارير كل المحلات - فقط المعتمدين
             $shops = $this->userModel->where('role', User::ROLE_SHOP)
                 ->where('is_active', true)
+                ->where('is_approved', true)
                 ->get();
 
             $shopReports = [];

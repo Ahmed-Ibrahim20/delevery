@@ -10,6 +10,7 @@ return new class extends Migration {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
 
+            
             // المستخدم اللي هيستقبل الإشعار
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
 
@@ -20,6 +21,10 @@ return new class extends Migration {
             // العنوان والنص
             $table->string('title', 255)->nullable();
             $table->text('message')->nullable();
+
+         //   $table->string('notifiable_type')->nullable();
+           // $table->unsignedBigInteger('notifiable_id')->nullable();
+     
 
             // ربط الإشعار بالكيان (مثلاً أوردر أو شكوى)
             $table->morphs('notifiable'); 

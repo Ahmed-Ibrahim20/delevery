@@ -24,6 +24,38 @@ class NotificationService
     public function createNotification(array $data)
     {
         try {
+            // التحقق من البيانات المطلوبة
+            if (empty($data['title']) || empty($data['message'])) {
+                return [
+                    'status' => false,
+                    'message' => 'العنوان والرسالة مطلوبان'
+                ];
+            }
+
+            // التحقق من عدم وجود إشعار مكرر
+            if (isset($data['user_id']) && isset($data['notifiable_id']) && isset($data['notifiable_type']) && isset($data['title'])) {
+                $existingNotification = $this->notificationModel
+                    ->where('user_id', $data['user_id'])
+                    ->where('notifiable_id', $data['notifiable_id'])
+                    ->where('notifiable_type', $data['notifiable_type'])
+                    ->where('title', $data['title'])
+                    ->first();
+
+                if ($existingNotification) {
+                    Log::info('Duplicate notification prevented', [
+                        'user_id' => $data['user_id'],
+                        'notifiable_id' => $data['notifiable_id'],
+                        'existing_notification_id' => $existingNotification->id
+                    ]);
+
+                    return [
+                        'status' => true,
+                        'message' => 'الإشعار موجود مسبقاً',
+                        'data' => $existingNotification
+                    ];
+                }
+            }
+
             $notification = $this->notificationModel->create([
                 'user_id' => $data['user_id'] ?? null,
                 'target_role' => $data['target_role'] ?? null,
@@ -43,10 +75,14 @@ class NotificationService
                 'data' => $notification
             ];
         } catch (\Exception $e) {
-            Log::error('Create notification failed: ' . $e->getMessage());
+            Log::error('Create notification failed: ' . $e->getMessage(), [
+                'data' => $data,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return [
                 'status' => false,
-                'message' => 'حدث خطأ أثناء إنشاء الإشعار'
+                'message' => 'حدث خطأ أثناء إنشاء الإشعار: ' . $e->getMessage()
             ];
         }
     }
@@ -62,12 +98,38 @@ class NotificationService
                 $user = $this->userModel->where('role', $targetRole)
                     ->where('is_active', true)
                     ->first(); // أول أدمن نشط فقط
-                
+
                 if (!$user) {
                     return [
                         'status' => false,
                         'message' => 'لا يوجد أدمن نشط'
                     ];
+                }
+
+                // التحقق من عدم وجود إشعار مسبق لنفس الكيان
+                if ($notifiable) {
+                    $existingNotification = $this->notificationModel
+                        ->where('user_id', $user->id)
+                        ->where('target_role', $targetRole)
+                        ->where('notifiable_id', $notifiable->id)
+                        ->where('notifiable_type', get_class($notifiable))
+                        ->where('title', $title)
+                        ->first();
+
+                    if ($existingNotification) {
+                        Log::info('Notification already exists for this entity', [
+                            'user_id' => $user->id,
+                            'notifiable_id' => $notifiable->id,
+                            'notifiable_type' => get_class($notifiable),
+                            'existing_notification_id' => $existingNotification->id
+                        ]);
+
+                        return [
+                            'status' => true,
+                            'message' => 'الإشعار موجود مسبقاً',
+                            'data' => $existingNotification
+                        ];
+                    }
                 }
 
                 $notificationData = [
@@ -112,6 +174,26 @@ class NotificationService
 
             $notifications = [];
             foreach ($users as $user) {
+                // التحقق من عدم وجود إشعار مسبق لنفس الكيان
+                if ($notifiable) {
+                    $existingNotification = $this->notificationModel
+                        ->where('user_id', $user->id)
+                        ->where('target_role', $targetRole)
+                        ->where('notifiable_id', $notifiable->id)
+                        ->where('notifiable_type', get_class($notifiable))
+                        ->where('title', $title)
+                        ->first();
+
+                    if ($existingNotification) {
+                        Log::info('Notification already exists for this user and entity', [
+                            'user_id' => $user->id,
+                            'notifiable_id' => $notifiable->id,
+                            'existing_notification_id' => $existingNotification->id
+                        ]);
+                        continue; // تخطي هذا المستخدم
+                    }
+                }
+
                 $notificationData = [
                     'user_id' => $user->id,
                     'target_role' => $targetRole,
@@ -207,7 +289,7 @@ class NotificationService
     {
         try {
             $query = $this->notificationModel->where('id', $notificationId);
-            
+
             if ($userId) {
                 $query->where('user_id', $userId);
             }
@@ -268,7 +350,7 @@ class NotificationService
     {
         try {
             $query = $this->notificationModel->where('id', $notificationId);
-            
+
             if ($userId) {
                 $query->where('user_id', $userId);
             }
@@ -506,12 +588,12 @@ class NotificationService
             $totalCount = $this->notificationModel
                 ->whereIn('target_role', [Notification::ROLE_ADMIN, Notification::ROLE_DRIVER, Notification::ROLE_SHOP])
                 ->count();
-                
+
             $unreadCount = $this->notificationModel
                 ->whereIn('target_role', [Notification::ROLE_ADMIN, Notification::ROLE_DRIVER, Notification::ROLE_SHOP])
                 ->where('is_read', false)
                 ->count();
-                
+
             $readCount = $totalCount - $unreadCount;
 
             return [
