@@ -35,7 +35,7 @@ class OrderRequest extends FormRequest
             'status'          => [
                 'required',
                 'integer',
-                Rule::in([0, 1, 2]) // 0=pending,1=delivered,2=cancelled
+                Rule::in([0, 1, 2,3]) // 0=pending,1=delivered,2=cancelled
             ],
             'notes'           => 'nullable|string|max:500',
         ];
